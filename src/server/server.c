@@ -5,6 +5,8 @@
 
 #include "server.h"
 #include "client.h"
+#include "gamelogic.h"
+#include "display.h"
 
 static void init(void)
 {
@@ -91,14 +93,14 @@ static void app(void)
          max = csock > max ? csock : max;
 
          FD_SET(csock, &rdfs);
-
          Client *client = (Client*)malloc(sizeof(Client));
          client->sock = csock;
-         client->game=-1;
+         client->game=NULL;
          client->player=-1;
-         client->challengedBy=-1;
+         client->challengedBy=NULL;
          strncpy(client->name, buffer, BUF_SIZE-1);
          int index = add_client(client);
+         actual++;
          menu(client);
       }
       else
@@ -122,9 +124,38 @@ static void app(void)
                }
                else
                {
-                    if (buffer=="1"){
+                    if (strcmp(buffer,"1")==0){
                         list_clients(buffer, *clients[i]);
                     }
+                    else if (strcmp(buffer,"2")==0){
+                        challengeClient(clients[i]);
+                    }
+                    else if (strcmp(buffer, "accept") == 0)
+                     {
+                        if (client->challengedBy == NULL)
+                        {
+                           write_client(client->sock, "\nYou don't have any challenge to accept !\n");
+                        }
+                        else
+                        {
+                           write_client(client->sock, "\nYou accepted the challenge !\n Creating the game...\n" );
+
+                           Player *p1 = create_player();
+                           Player *p2 = create_player();
+                           Game *game = new_game(p1, p2);
+                           client->game = game;
+                           client->challengedBy->game = game;
+                           client->player = p1;
+                           client->challengedBy->player = p2;
+
+                           char buffer[BUF_SIZE];
+                           snprintf(buffer, BUF_SIZE, "\nGame created between P1 : %s and P2 : %s !\n", client->name, client->challengedBy->name);
+                           write_client(client->sock, buffer);
+                           write_client(client->challengedBy->sock, buffer);
+                           // handleGame(client);
+                           // handleGame(client->challengedBy);
+                        }
+                     }
                 }
             }
          }
@@ -260,6 +291,7 @@ static void menu(Client *client)
     buffer[0] = 0;
     strncat(buffer, "Welcome on Awale ! Here is the menu, choose a number : \r\n", BUF_SIZE-strlen(buffer)-1);
     strncat(buffer, "1 - View all online players\r\n", BUF_SIZE-strlen(buffer)-1);
+    strncat(buffer, "2 - Challenge a player\r\n", BUF_SIZE-strlen(buffer)-1);
     write_client(client->sock, buffer);
 }
 
@@ -287,6 +319,315 @@ static void list_clients(char *buffer, Client client)
     }
     write_client(client.sock, buffer);
 }
+
+static void list_clients_not_in_game(char *buffer, Client *client)
+{
+   buffer[0] = 0;
+   strncat(buffer, "\nList of clients:\n", BUF_SIZE - strlen(buffer) - 1);
+   for (int i = 0; i < MAX_CLIENTS; i++)
+   {
+      if (clients[i] != NULL && clients[i]->game == NULL && clients[i]->challengedBy == NULL)
+      {
+         strncat(buffer, "\t- ", BUF_SIZE - strlen(buffer) - 1);
+         if (clients[i] == client)
+         {
+            //strncat(buffer,GREEN, BUF_SIZE - strlen(buffer) - 1);
+            strncat(buffer, clients[i]->name, BUF_SIZE - strlen(buffer) - 1);
+            strncat(buffer, " (you)", BUF_SIZE - strlen(buffer) - 1);
+            //strncat(buffer,RESET, BUF_SIZE - strlen(buffer) - 1);
+         }
+         else
+         {
+
+            strncat(buffer, clients[i]->name, BUF_SIZE - strlen(buffer) - 1);
+         }
+         strncat(buffer, "\n", BUF_SIZE - strlen(buffer) - 1);
+      }
+   }
+}
+
+static Client *getClientByName(const char *name)
+{
+   for (int i = 0; i < MAX_CLIENTS; i++)
+   {
+      if (clients[i] != NULL && strcmp(clients[i]->name, name) == 0)
+      {
+         return clients[i];
+      }
+   }
+   return NULL;
+}
+
+static int challengeClient(Client *challenger)
+{
+   char buffer[BUF_SIZE];
+   char list[BUF_SIZE];
+   while (1)
+   {
+      // boolean isPrivate = FALSE;
+      // write_client(challenger->sock, "\nDo you want to make a " RED "private" RESET " or " RED "public" RESET " challenge ?\n" RED "cancel" RESET " to cancel\n");
+      // while (1)
+      // {
+      //    buffer[0] = 0;
+      //    if (read_client(challenger->sock, buffer) <= 0)
+      //       return SOCKET_ERROR;
+      //    else if (strcmp(buffer, "cancel") == 0)
+      //    {
+      //       return EXIT_SUCCESS;
+      //    }
+      //    else if (strcmp(buffer, "private") == 0)
+      //    {
+      //       isPrivate = TRUE;
+      //       break;
+      //    }
+      //    else if (strcmp(buffer, "public") == 0)
+      //    {
+      //       isPrivate = FALSE;
+      //       break;
+      //    }
+      //    else
+      //    {
+      //       write_client(challenger->sock, RED "Invalid input !\n" RESET "Enter " RED "private" RESET " or " RED "public" RESET "\n");
+      //    }
+      // }
+
+      write_client(challenger->sock, "\nWho do you want to challenge ?\ncancel to cancel\n");
+      list_clients_not_in_game(buffer, challenger);
+      write_client(challenger->sock, buffer);
+
+      buffer[0] = 0;
+      if (read_client(challenger->sock, buffer) <= 0)
+         return SOCKET_ERROR;
+      if (strcmp(buffer, "cancel") == 0)
+      {
+         break;
+      }
+      Client *challengee = getClientByName(buffer);
+      char message[BUF_SIZE];
+      if (challengee == NULL)
+      {
+         snprintf(message, BUF_SIZE, "\nPlayer %s not found !\n", buffer);
+         write_client(challenger->sock, message);
+      }
+      else if (challengee->game != NULL)
+      {
+         snprintf(message, BUF_SIZE, "\nPlayer %s is already playing !\n", buffer);
+         write_client(challenger->sock, message);
+      }
+      else if (challenger->challengedBy != NULL)
+      {
+         snprintf(message, BUF_SIZE, "\nYou are already challenged by %s !\n", challenger->challengedBy->name);
+         write_client(challenger->sock, message);
+      }
+      else if (challengee == challenger)
+      {
+         snprintf(message, BUF_SIZE, "\nYou can't challenge yourself !\n");
+         write_client(challenger->sock, message);
+      }
+      else if (challengee->challengedBy != NULL)
+      {
+         snprintf(message, BUF_SIZE, "\nPlayer %s is already challenged !\n", buffer);
+         write_client(challenger->sock, message);
+      }
+      else
+      {
+         challengee->challengedBy = challenger;
+         challenger->challengedBy = challengee;
+
+         // Before creating the game, set if it's private or not
+         // It can be checked only here since game is created just after this event
+         // challengee->isPrivate = isPrivate;
+         // challenger->isPrivate = isPrivate;
+
+         snprintf(message, BUF_SIZE, "\n%s wants to challenge you in a game!\n", challenger->name);
+         write_client(challengee->sock, message);
+         snprintf(message, BUF_SIZE, "\nType accept to accept the challenge !");
+         write_client(challengee->sock, message);
+
+         snprintf(message, BUF_SIZE, "\nWaiting for %s's response...\n", challengee->name);
+         write_client(challenger->sock, message);
+         break;
+      }
+   }
+   // Wait for the challengee to accept or refuse
+   // while (challenger->challengedBy != NULL)
+   // {
+   //    char tempBuffer[BUF_SIZE];
+   //    // Check for disconnect while waiting
+   //    if (!check_socket(challenger->sock, tempBuffer))
+   //    {
+   //       return SOCKET_ERROR;
+   //    }
+   //    // If a game is created, it means the other accepted it
+   //    else if (challenger->game != NULL)
+   //    {
+   //       break;
+   //    }
+   // }
+   return EXIT_SUCCESS;
+}
+
+// static int check_socket(int sockFd, char *tempBuffer)
+// {
+//    fd_set read_fds;
+//    struct timeval tv;
+//    FD_ZERO(&read_fds);
+//    FD_SET(sockFd, &read_fds);
+
+//    tv.tv_sec = 1;
+//    tv.tv_usec = 0;
+
+//    int select_ret = select(sockFd + 1, &read_fds, NULL, NULL, &tv);
+
+//    if (select_ret == -1)
+//    {
+//       perror("select");
+//       return 0;
+//    }
+//    else if (select_ret > 0)
+//    {
+//       // Data available, check if disconnect
+//       int bytes_read = read_client(sockFd, tempBuffer);
+//       if (bytes_read <= 0)
+//       {
+//          return 0;
+//       }
+//    }
+//    return 1;
+// }
+
+// static void handleGame(Client* client)
+// {
+//    if (client->game->turn==client){
+
+//    }
+// }
+
+// static void handleGame(Client *client)
+// {
+//    while (client->game != NULL)
+//    {
+//       Game *game = client->game;
+//       char buffer[BUF_SIZE];
+//       boolean quit = FALSE;
+//       while (game != NULL && game->turn != NULL && game->turn == client->challengedBy->player)
+//       {
+//          char tempBuffer[BUF_SIZE];
+//          tempBuffer[0] = 0;
+//          char message[BUF_SIZE];
+//          message[0] = 0;
+
+//          // Checks for disconnect and absorbs all inputs while waiting for the other player
+//          if (!check_socket(client->sock, tempBuffer))
+//          {
+//             quit = TRUE;
+//             break;
+//          }
+//          else if (strlen(tempBuffer) > 0)
+//          {
+//             //send_chat_message_to_all_observers(client, tempBuffer, client->player == game->players[0] ? GREEN : PURPLE);
+//          }
+//       }
+//       // Pointer to game may have changed in the other thread
+//       // Checks if the game is still going
+//       // Checks for disconnect
+//       if ((game = client->game) == NULL || game->turn == NULL || quit)
+//       {
+//          break;
+//       }
+
+//       write_client(client->sock, "\nIt's your turn !\nType tie to tie\nType anything else to send it to your opponent and the observers\n");
+//       char *nameP1 = client->player == game->players[0] ? client->name : client->challengedBy->name;
+//       char *nameP2 = client->player == game->players[1] ? client->name : client->challengedBy->name;
+//       construct_board(game, buffer, nameP1, nameP2);
+
+//       //send_message_to_all_observers(game, buffer, NULL);
+
+//       // Check if the game and the socket are still alive
+//       if (client->game == NULL || read_client(client->sock, buffer) <= 0)
+//       {
+//          break;
+//       }
+//       else
+//       {
+//          game = client->game;
+//          int caseNumber = atoi(buffer);
+//          Pit pit;
+
+//          // Check if the player wants to tie
+//          if (strcmp(buffer, "tie") == 0)
+//          {
+//             tie(game);
+//             write_client(client->sock, "\nYou asked to tie !\n" );
+//             write_client(client->challengedBy->sock,  "\nYour opponent asked to tie !\n");
+//             game->turn = get_opponent(game->turn, game);
+//          }
+//          // Check if conversion was successful
+//          else if (caseNumber == 0)
+//          {
+//             //send_chat_message_to_all_observers(client, buffer, client->player == game->players[0] ? GREEN : PURPLE);
+//          }
+//          else if (get_pit(caseNumber, &pit) && is_valid_move(pit, game))
+//          {
+//             make_move(&(client->game), pit);
+
+//             //update_game_of_all_observers(game, client->game);
+//             game = client->game;
+
+//             write_client(client->sock, "\nMove done !\nWait for your turn...\nAny message typed will be sent to your opponent and the observers.\n");
+//          }
+//          else
+//          {
+//             write_client(client->sock,"Invalid move\nPlease retry another one.\n");
+//          }
+
+//          // Game is over
+//          if (game != NULL && is_game_over(game))
+//          {
+//             construct_board(game, buffer, nameP1, nameP2);
+
+//             //send_message_to_all_observers(game, buffer, NULL);
+
+//             Player *winner = get_winner(game);
+//             if (winner != NULL)
+//             {
+//                char message[BUF_SIZE];
+//                snprintf(message, BUF_SIZE, "\nPlayer %d won !\n", winner == game->players[0] ? 1 : 2);
+
+//                //send_message_to_all_observers(game, message, NULL);
+
+//                if (winner == client->player)
+//                {
+//                   write_client(client->sock,  "\nCongratulations, you won !\n" );
+//                   write_client(client->challengedBy->sock,  "\nYou lost !\n" );
+//                }
+//                else
+//                {
+//                   write_client(client->sock, "\nYou lost !\n");
+//                   write_client(client->challengedBy->sock, "\nCongratulations, you won !\n" );
+//                }
+//             }
+//             else
+//             {
+//                //send_message_to_all_observers(game, "\nIt's a tie !\n" , NULL);
+//             }
+
+//             //update_game_of_all_observers(game, NULL);
+
+//             // Free all the memory allocated for the game
+//             free_player(game->players[0]);
+//             free_player(game->players[1]);
+//             free_game(game);
+
+//             client->player = NULL;
+//             client->challengedBy->player = NULL;
+//             client->challengedBy->challengedBy = NULL;
+//             client->challengedBy = NULL;
+//             break;
+//          }
+//       }
+//    }
+// }
 
 int main(int argc, char **argv)
 {

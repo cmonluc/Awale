@@ -48,5 +48,8 @@ static void clear_clients(Client *clients, int actual);
 static void list_clients(char *buffer, Client client);
 static void menu(Client *client);
 static int add_client(Client *client);
+static int check_socket(int sockFd, char *tempBuffer);
+static int challengeClient(Client *challenger);
+static void handleGame(Client *client);
 
 #endif /* guard */

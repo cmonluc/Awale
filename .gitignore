@@ -1,0 +1,6 @@
+client.exe
+display.o
+game.o
+gamelogic.o
+server.exe
+server.o
