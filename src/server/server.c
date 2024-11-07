@@ -26,6 +26,8 @@ static void end(void)
 #endif
 }
 
+Client *clients[MAX_CLIENTS];
+
 static void app(void)
 {
    SOCKET sock = init_connection();
@@ -34,7 +36,6 @@ static void app(void)
    int actual = 0;
    int max = sock;
    /* an array for all clients */
-   Client *clients[MAX_CLIENTS];
 
    fd_set rdfs;
 
@@ -122,7 +123,7 @@ static void app(void)
                else
                {
                     if (buffer=="1"){
-                        list_clients(buffer, client[i]);
+                        list_clients(buffer, *clients[i]);
                     }
                 }
             }
@@ -139,7 +140,7 @@ static void clear_clients(Client *clients, int actual)
    int i = 0;
    for(i = 0; i < actual; i++)
    {
-      closesocket(clients[i]->sock);
+      closesocket(clients[i].sock);
    }
 }
 
@@ -258,7 +259,7 @@ static void menu(Client *client)
     char buffer[BUF_SIZE];
     buffer[0] = 0;
     strncat(buffer, "Welcome on Awale ! Here is the menu, choose a number : \r\n", BUF_SIZE-strlen(buffer)-1);
-    strncat(buffer, "1 - View all online players\r\n");
+    strncat(buffer, "1 - View all online players\r\n", BUF_SIZE-strlen(buffer)-1);
     write_client(client->sock, buffer);
 }
 
@@ -271,20 +272,20 @@ static void list_clients(char *buffer, Client client)
         if (clients[i] != NULL)
         {
             strncat(buffer, clients[i]->name, BUF_SIZE-strlen(buffer)-1);
-            if (clients[i]==client)
+            if (strcmp(clients[i]->name, client.name)==0)
             {
-                strncat(buffer, " (you)" BUF_SIZE-strlen(buffer)-1);
+                strncat(buffer, " (you)", BUF_SIZE-strlen(buffer)-1);
             }
 
             else if (clients[i]->game != NULL)
             {   
-                strncat(buffer, " (in game)" BUF_SIZE-strlen(buffer)-1);
+                strncat(buffer, " (in game)", BUF_SIZE-strlen(buffer)-1);
             }
 
-            strncat(buffer, "\r\n" BUF_SIZE-strlen(buffer)-1);
+            strncat(buffer, "\r\n", BUF_SIZE-strlen(buffer)-1);
         }
     }
-    write_client(client->sock, buffer);
+    write_client(client.sock, buffer);
 }
 
 int main(int argc, char **argv)
