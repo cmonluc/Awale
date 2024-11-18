@@ -57,6 +57,6 @@ static int add_client(Client *client);
 static int check_socket(int sockFd, char *tempBuffer);
 static int challengeClient(Client *challenger);
 static void handleGame(Client *client);
-char* buffer_board(Game* game);
+void sendBoardToClient(Game* game, Client *client);
 
 #endif /* guard */

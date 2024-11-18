@@ -30,16 +30,23 @@ static void end(void)
 
 Client *clients[MAX_CLIENTS];
 
-char* buffer_board(Game *game)
+void sendBoardToClient(Game *game, Client* client)
 {
     char buffer[BUF_SIZE];
-    buffer[0] = 0;  // Initialize buffer to be empty
-
+    buffer[0] = 0;
     // Add the initial lines
     strncat(buffer, "\n\n\n", BUF_SIZE - strlen(buffer) - 1);
+    write_client(client->sock, buffer);
+    buffer[0] = 0;
     strncat(buffer, "Direction " RED "--->\n" RESET, BUF_SIZE - strlen(buffer) - 1);
+    write_client(client->sock, buffer);
+    buffer[0] = 0;
     strncat(buffer, "Case    |  1   2   3   4   5   6  | Scores\n", BUF_SIZE - strlen(buffer) - 1);
+    write_client(client->sock, buffer);
+    buffer[0] = 0;
     strncat(buffer, "---------------------------------------------------\n", BUF_SIZE - strlen(buffer) - 1);
+    write_client(client->sock, buffer);
+    buffer[0] = 0;
 
     // Add the board for Player 1
     char player1_row[100]; // Temporary buffer for player 1's row
@@ -50,8 +57,11 @@ char* buffer_board(Game *game)
              game->board[0][3], game->board[0][4], game->board[0][5],
              game->players[0]->score);
     strncat(buffer, player1_row, BUF_SIZE - strlen(buffer) - 1);
-
+    write_client(client->sock, buffer);
+    buffer[0] = 0;
     strncat(buffer, "---------------------------------------------------\n", BUF_SIZE - strlen(buffer) - 1);
+    write_client(client->sock, buffer);
+    buffer[0] = 0;
 
     // Add the board for Player 2
     char player2_row[100]; // Temporary buffer for player 2's row
@@ -62,13 +72,23 @@ char* buffer_board(Game *game)
              game->board[1][3], game->board[1][4], game->board[1][5],
              game->players[1]->score);
     strncat(buffer, player2_row, BUF_SIZE - strlen(buffer) - 1);
+    write_client(client->sock, buffer);
+    buffer[0] = 0;
 
     strncat(buffer, "---------------------------------------------------\n", BUF_SIZE - strlen(buffer) - 1);
+    write_client(client->sock, buffer);
+    buffer[0]=0;
 
     // Add the row of numbers at the bottom
     strncat(buffer, "          12  11  10   9   8   7\n", BUF_SIZE - strlen(buffer) - 1);
+    write_client(client->sock, buffer);
+    buffer[0] = 0;  // Initialize buffer to be empty
+    strncat(buffer, "\n\n\n", BUF_SIZE - strlen(buffer) - 1);
+    write_client(client->sock, buffer);
+    buffer[0] = 0;
+    strncat(buffer, "C'est votre tour ! Quelle case souhaitez-vous choisir ? Entrez un numéro entre 1 et 12.", BUF_SIZE - strlen(buffer) - 1);
+    write_client(client->sock, buffer);
 
-    return buffer;
 }
 
 static void app(void)
@@ -170,6 +190,9 @@ static void app(void)
                     }
                     else if (strcmp(buffer,"2")==0){
                         challengeClient(clients[i]);
+                    }
+                    else if (strcmp(buffer,"3")==0){
+                     
                     }
                     else if (strcmp(buffer, "accept") == 0)
                      {
@@ -429,6 +452,7 @@ static void menu(Client *client)
     strncat(buffer, "\r\nWelcome on Awale ! Here is the menu, choose a number : \r\n", BUF_SIZE-strlen(buffer)-1);
     strncat(buffer, "1 - View all online players\r\n", BUF_SIZE-strlen(buffer)-1);
     strncat(buffer, "2 - Challenge a player\r\n", BUF_SIZE-strlen(buffer)-1);
+    strncat(buffer, "3 - Modify your bio\r\n", BUF_SIZE-strlen(buffer)-1);
     write_client(client->sock, buffer);
 }
 
@@ -636,34 +660,44 @@ static int challengeClient(Client *challenger)
 static void handleGame(Client* client)
 {
    client->player = create_player();
-   printf("597\r\n");
    client->challengedBy->player = create_player();
-   printf("599\r\n");
    Client* clientQuiJoue = client;
-   printf("601\r\n");
    Game *game = new_game(client->player,client->challengedBy->player);
-   printf("603\r\n");
-   //char buffer[BUF_SIZE];
-   printf("605\r\n");
    while(!is_game_over(game)){
-      printf("607\r\n");
-      //buffer[0] = 0;
-      char * buffer = buffer_board(game);
-      write_client(clientQuiJoue->sock, buffer);
-      printf("609\r\n");
+      sendBoardToClient(game,clientQuiJoue);
+      char buffer[BUF_SIZE];
+      buffer[0]=0;
+      read_client(clientQuiJoue->sock,buffer);
+      int nbcase;
+      if (buffer[1]=='\0'){
+         nbcase = (int)(buffer[0]) - (int)('0');
+      }
+      else{
+         nbcase = ((int)(buffer[0]) - (int)('0'))*10 + ((int)(buffer[1]) - (int)('0'));
+      }
+      Pit pit;
+      if (get_pit(nbcase,&pit)){
+         if (is_valid_move(pit,game)){
+            make_move(&game,pit);
+         }
+      }
       if (clientQuiJoue == client){
          clientQuiJoue = client->challengedBy;
-         printf("612\r\n");
       }
       else{
          clientQuiJoue = client;
-         printf("616\r\n");
       }
-      printf("%s\r\n", clientQuiJoue->name);
-      printf("619\r\n");
-      break;
    }
-   printf("622\r\n");
+   Client* winner= get_winner(game);
+   Client* loser = get_loser(game);
+   char buffer[BUF_SIZE];
+   buffer[0]=0;
+   strncat(buffer, "Vous avez gagné ! Félicitations !", BUF_SIZE - strlen(buffer) - 1);
+   write_client(winner->sock, buffer);
+   buffer[0]=0;
+   strncat(buffer, "Vous avez perdu... Essayez à nouveau !", BUF_SIZE - strlen(buffer) - 1);
+   write_client(loser->sock, buffer);
+
 }
 
 // static void handleGame(Client *client)

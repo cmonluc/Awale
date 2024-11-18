@@ -85,4 +85,7 @@ void tie(Game *game);
 // Returns the winner of the game, or NULL if the game is not over or it is a tie.
 Player *get_winner(Game *game);
 
+// Returns the winner of the game, or NULL if the game is not over or it is a tie.
+Player *get_loser(Game *game);
+
 #endif // GAME_LOGIC_H

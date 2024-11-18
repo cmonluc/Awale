@@ -16,8 +16,9 @@ Game *new_game(Player *player1, Player *player2)
     game->players[1] = player2;
 
     // chooses randomly who starts
-    srand(time(NULL));
-    game->turn = rand() % 2 == 0 ? player1 : player2;
+    // srand(time(NULL));
+    // game->turn = rand() % 2 == 0 ? player1 : player2;
+    game->turn = player1;
 
     for (int i = 0; i < 2; i++)
     {
@@ -260,34 +261,26 @@ Player *player_line_empty(Game *game)
 
 boolean is_game_over(Game *game)
 {
-    printf("Ah vraiment je rentre pas\r\n");
     boolean gameOver = FALSE;
-    printf("263\r\n");
     Player *player;
-    printf("265\r\n");
     // if one player has above 25 captured seeds
     if (game->players[0]->score >= 25 || game->players[1]->score >= 25)
     {
         gameOver = TRUE;
-        printf("270\r\n");
     }
     // if one player has no seeds left on his line and the next player can't feed him
     else if ((player = player_line_empty(game)) != NULL && check_starvation(game, player))
     {
         empty_seeds(game, get_opponent(player, game));
-        printf("276\r\n");
         gameOver = TRUE;
-        printf("278\r\n");
     }
     // if it is not possible to capture seeds <-> players tie the game together
     else if (game->players[0]->tie && game->players[1]->tie)
     {
         gameOver = TRUE;
-        printf("284\r\n");
     }
     if (gameOver)
         game->turn = NULL;
-        printf("288\r\n");
     return gameOver;
 }
 
@@ -348,5 +341,21 @@ Player *get_winner(Game *game)
     else
     {
         return game->players[1];
+    }
+}
+
+Player *get_loser(Game *game)
+{
+    if (game->players[0]->tie && game->players[1]->tie || game->players[0]->score == game->players[1]->score)
+    {
+        return NULL;
+    }
+    else if (game->players[0]->score > game->players[1]->score)
+    {
+        return game->players[1];
+    }
+    else
+    {
+        return game->players[0];
     }
 }
