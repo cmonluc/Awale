@@ -12,7 +12,7 @@
 
 #define BUF_SIZE    1024
 
-#include "gameLogic.h"
+#include "gamelogic.h"
 #include <stdio.h>
 
 // Prints the game board on stdout.
