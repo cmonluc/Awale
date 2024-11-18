@@ -2,7 +2,7 @@ SERVER_EXE = server
 CLIENT_EXE = client
 GAME_EXE = game
 COMPILER = gcc
-FLAGS = -c -ansi -pedantic -Wall # -Werror
+FLAGS = -c -ansi -pedantic -Wall #-Werror
 DEBUG_FLAGS = -g
 PERF_FLAGS = -DPERF
 BUILD_PATH = ./build
@@ -13,20 +13,24 @@ SERVER_PATH = $(SRC_PATH)/server
 GAME_PATH = $(SRC_PATH)/game
 INCLUDE_PATH = -I ./interfaces
 
-server: ./src/server/server.c display.o gamelogic.o
-	gcc -o server ./src/server/server.c display.o gamelogic.o $(DEBUG_FLAGS)
+${SERVER_EXE}: ${SERVER_PATH}/server.c ${BUILD_PATH}/game.o ${BUILD_PATH}/display.o ${BUILD_PATH}/gameLogic.o
+	gcc -o ${BIN_PATH}/${SERVER_EXE} ${SERVER_PATH}/server.c ${BUILD_PATH}/game.o ${BUILD_PATH}/display.o ${BUILD_PATH}/gameLogic.o ${INCLUDE_PATH} $(DEBUG_FLAGS) -w
 
-client: ./src/client/client.c
-	gcc -o client ./src/client/client.c $(DEBUG_FLAGS)
+${CLIENT_EXE}: ${CLIENT_PATH}/client.c
+	gcc -o ${BIN_PATH}/${CLIENT_EXE} ${CLIENT_PATH}/client.c ${INCLUDE_PATH} $(DEBUG_FLAGS)
 
-game: ./src/game/game.c gamelogic.o display.o
-	gcc -o game ./src/game/game.c display.o gamelogic.o $(DEBUG_FLAGS)
+# ${GAME_EXE}: ${GAME_PATH}/game.c gamelogic.o display.o
+# 	gcc -o ${BIN_PATH}/${GAME_EXE} ${GAME_PATH}/game.c ${BUILD_PATH}/display.o ${BUILD_PATH}/gameLogic.o ${INCLUDE_PATH} $(DEBUG_FLAGS)
 
-gameLogic.o: ./src/game/gamelogic.c
-	gcc -c -o gamelogic.o ./src/game/gamelogic.c $(DEBUG_FLAGS)
+game.o: $(GAME_PATH)/game.c
+	gcc -c -o ${BUILD_PATH}/game.o ${GAME_PATH}/game.c ${INCLUDE_PATH} $(DEBUG_FLAGS)
+
+
+gameLogic.o: $(GAME_PATH)/gamelogic.c
+	gcc -c -o ${BUILD_PATH}/gamelogic.o ${GAME_PATH}/gamelogic.c ${INCLUDE_PATH} $(DEBUG_FLAGS)
 
 display.o: $(GAME_PATH)/display.c
-	gcc -c -o display.o ./src/game/display.c $(DEBUG_FLAGS)
+	gcc -c -o ${BUILD_PATH}/display.o ${GAME_PATH}/display.c ${INCLUDE_PATH} $(DEBUG_FLAGS)
 
 
 clean:

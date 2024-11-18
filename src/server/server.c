@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include "server.h"
-#include "client.h"
+#include "clientServer.h"
 #include "gamelogic.h"
 #include "display.h"
 
@@ -29,6 +29,47 @@ static void end(void)
 }
 
 Client *clients[MAX_CLIENTS];
+
+char* buffer_board(Game *game)
+{
+    char buffer[BUF_SIZE];
+    buffer[0] = 0;  // Initialize buffer to be empty
+
+    // Add the initial lines
+    strncat(buffer, "\n\n\n", BUF_SIZE - strlen(buffer) - 1);
+    strncat(buffer, "Direction " RED "--->\n" RESET, BUF_SIZE - strlen(buffer) - 1);
+    strncat(buffer, "Case    |  1   2   3   4   5   6  | Scores\n", BUF_SIZE - strlen(buffer) - 1);
+    strncat(buffer, "---------------------------------------------------\n", BUF_SIZE - strlen(buffer) - 1);
+
+    // Add the board for Player 1
+    char player1_row[100]; // Temporary buffer for player 1's row
+    snprintf(player1_row, sizeof(player1_row),
+             GREEN "%s P1  | %2d  %2d  %2d  %2d  %2d  %2d  | %d\n" RESET,
+             game->turn == game->players[0] ? RED "-->" GREEN : "   ",
+             game->board[0][0], game->board[0][1], game->board[0][2],
+             game->board[0][3], game->board[0][4], game->board[0][5],
+             game->players[0]->score);
+    strncat(buffer, player1_row, BUF_SIZE - strlen(buffer) - 1);
+
+    strncat(buffer, "---------------------------------------------------\n", BUF_SIZE - strlen(buffer) - 1);
+
+    // Add the board for Player 2
+    char player2_row[100]; // Temporary buffer for player 2's row
+    snprintf(player2_row, sizeof(player2_row),
+             PURPLE "%s P2  | %2d  %2d  %2d  %2d  %2d  %2d  | %d\n" RESET,
+             game->turn == game->players[1] ? RED "-->" PURPLE : "   ",
+             game->board[1][0], game->board[1][1], game->board[1][2],
+             game->board[1][3], game->board[1][4], game->board[1][5],
+             game->players[1]->score);
+    strncat(buffer, player2_row, BUF_SIZE - strlen(buffer) - 1);
+
+    strncat(buffer, "---------------------------------------------------\n", BUF_SIZE - strlen(buffer) - 1);
+
+    // Add the row of numbers at the bottom
+    strncat(buffer, "          12  11  10   9   8   7\n", BUF_SIZE - strlen(buffer) - 1);
+
+    return buffer;
+}
 
 static void app(void)
 {
@@ -96,7 +137,7 @@ static void app(void)
          Client *client = (Client*)malloc(sizeof(Client));
          client->sock = csock;
          client->game=NULL;
-         client->player=-1;
+         client->player=NULL;
          client->challengedBy=NULL;
          strncpy(client->name, buffer, BUF_SIZE-1);
          int index = add_client(client);
@@ -152,7 +193,7 @@ static void app(void)
                            snprintf(buffer, BUF_SIZE, "\nGame created between P1 : %s and P2 : %s !\n", client->name, client->challengedBy->name);
                            write_client(client->sock, buffer);
                            write_client(client->challengedBy->sock, buffer);
-                           // handleGame(client);
+                           handleGame(client);
                            // handleGame(client->challengedBy);
                         }
                      }
@@ -264,24 +305,120 @@ static void write_client(SOCKET sock, const char *buffer)
    }
 }
 
-static int add_client(Client *client)
-{
-    for (int i=0; i<MAX_CLIENTS; i++){
-        //verifier que le nom d'un nouveau client n'existe pas deja!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        if (clients[i] == NULL){
-            clients[i] = client;
-            return i;
+static int is_valid_pseudo(const char *pseudo){
+   int length = strlen(pseudo);
+
+   if (length<3 || length >= BUF_SIZE){
+      return 0;
+   }
+
+   return 1 ;
+}
+
+static int add_client(Client *newClient) {
+    char buffer[BUF_SIZE];
+    int is_unique = 0;
+    int attempts = 0;
+
+    // Si le client n'a pas encore de nom, on lui demande un nom
+    if (strcmp(newClient->name, "0") == 0) {
+        while (!is_unique && attempts < MAX_PSEUDO_ATTEMPTS) {
+            write_client(newClient->sock, "Please enter a username (3+ characters, no special symbols):");
+
+            // Lire le nom d'utilisateur du client
+            if (read_client(newClient->sock, buffer) <= 0) {
+                write_client(newClient->sock, "Error reading username. Try again.\r\n");
+                continue;
+            }
+
+            buffer[BUF_SIZE - 1] = '\0';
+
+            // Vérifier la validité du nom
+            if (!is_valid_pseudo(buffer)) {
+                write_client(newClient->sock, "Invalid username. Must be at least 3 characters, alphanumeric only.\r\n");
+                attempts++;
+                continue;
+            }
+
+            // Vérifier l'unicité du nom d'utilisateur
+            is_unique = 1;
+            for (int i = 0; i < MAX_CLIENTS; i++) {
+                if (clients[i] != NULL && strcmp(clients[i]->name, buffer) == 0) {
+                    write_client(newClient->sock, "Username already taken. Please choose another.\r\n");
+                    is_unique = 0;
+                    break;
+                }
+            }
         }
 
-        else if (strcmp(clients[i]->name, client->name) == 0){
-            write_client(client->sock, "This username is already taken, please use another one\r\n");
+        // Si trop de tentatives échouées, déconnecter le client
+        if (attempts >= MAX_PSEUDO_ATTEMPTS) {
+            write_client(newClient->sock, "Too many invalid attempts. Disconnecting.\r\n");
+            return -1;  // Déconnecter après trop d'échecs
         }
 
-        else if (strcmp(clients[i]->name, "")==0){
-            write_client(client->sock, "Please enter a username\r\n");
+        // Si le nom est valide, on le sauvegarde
+        strncpy(newClient->name, buffer, BUF_SIZE - 1);
+    }
+    else {
+        // Si le client a déjà un nom, on vérifie s'il est valide et unique
+        while (1) {
+            // Vérifier la validité du nom
+            if (!is_valid_pseudo(newClient->name)) {
+                write_client(newClient->sock, "Invalid username. Must be at least 3 characters, alphanumeric only.\r\n");
+                attempts++;
+                continue;  // Nom invalide
+            }
+
+            // Vérifier l'unicité du nom
+            is_unique = 1;
+            for (int i = 0; i < MAX_CLIENTS; i++) {
+                if (clients[i] != NULL && strcmp(clients[i]->name, newClient->name) == 0) {
+                    write_client(newClient->sock, "Username already taken. Please choose another.\r\n");
+                    is_unique = 0;
+                    break;
+                }
+            }
+
+            // Si le nom est unique et valide, on l'accepte
+            if (is_unique) {
+                break;
+            }
+
+            // Demander un nouveau nom si nécessaire
+            write_client(newClient->sock, "Please enter a username (3+ characters, no special symbols):");
+
+            if (read_client(newClient->sock, buffer) <= 0) {
+                write_client(newClient->sock, "Error reading username. Try again.\r\n");
+                continue;
+            }
+
+            buffer[BUF_SIZE - 1] = '\0';
+            if (!is_valid_pseudo(buffer)) {
+                write_client(newClient->sock, "Invalid username. Must be at least 3 characters, alphanumeric only.\r\n");
+                continue;
+            }
+
+            if (attempts >= MAX_PSEUDO_ATTEMPTS) {
+            write_client(newClient->sock, "Too many invalid attempts. Disconnecting.\r\n");
+            return -1;  // Déconnecter après trop d'échecs
+        }
+
+            // Si le nom est valide et unique, on le met à jour
+            strncpy(newClient->name, buffer, BUF_SIZE - 1);
         }
     }
-    write_client(client->sock, "The server is full, please try again later\r\n");
+
+    // Trouver une place libre pour le client
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i] == NULL) {
+            clients[i] = newClient;
+            return i;  // Retourner l'index du client
+        }
+    }
+
+    // Si la table des clients est pleine, renvoyer une erreur
+    write_client(newClient->sock, "The server is full, please try again later.\r\n");
     return -1;
 }
 
@@ -289,7 +426,7 @@ static void menu(Client *client)
 {
     char buffer[BUF_SIZE];
     buffer[0] = 0;
-    strncat(buffer, "Welcome on Awale ! Here is the menu, choose a number : \r\n", BUF_SIZE-strlen(buffer)-1);
+    strncat(buffer, "\r\nWelcome on Awale ! Here is the menu, choose a number : \r\n", BUF_SIZE-strlen(buffer)-1);
     strncat(buffer, "1 - View all online players\r\n", BUF_SIZE-strlen(buffer)-1);
     strncat(buffer, "2 - Challenge a player\r\n", BUF_SIZE-strlen(buffer)-1);
     write_client(client->sock, buffer);
@@ -496,12 +633,38 @@ static int challengeClient(Client *challenger)
 //    return 1;
 // }
 
-// static void handleGame(Client* client)
-// {
-//    if (client->game->turn==client){
-
-//    }
-// }
+static void handleGame(Client* client)
+{
+   client->player = create_player();
+   printf("597\r\n");
+   client->challengedBy->player = create_player();
+   printf("599\r\n");
+   Client* clientQuiJoue = client;
+   printf("601\r\n");
+   Game *game = new_game(client->player,client->challengedBy->player);
+   printf("603\r\n");
+   //char buffer[BUF_SIZE];
+   printf("605\r\n");
+   while(!is_game_over(game)){
+      printf("607\r\n");
+      //buffer[0] = 0;
+      char * buffer = buffer_board(game);
+      write_client(clientQuiJoue->sock, buffer);
+      printf("609\r\n");
+      if (clientQuiJoue == client){
+         clientQuiJoue = client->challengedBy;
+         printf("612\r\n");
+      }
+      else{
+         clientQuiJoue = client;
+         printf("616\r\n");
+      }
+      printf("%s\r\n", clientQuiJoue->name);
+      printf("619\r\n");
+      break;
+   }
+   printf("622\r\n");
+}
 
 // static void handleGame(Client *client)
 // {
@@ -628,6 +791,25 @@ static int challengeClient(Client *challenger)
 //       }
 //    }
 // }
+
+// char* buffer_board(Game *game)
+// {
+//     char buffer[BUF_SIZE];
+//     buffer[0] = 0;
+//     strncat(buffer, "\n\n\n", BUF_SIZE-strlen(buffer)-1);
+//     strncat(buffer,"Direction " RED "--->\n" RESET, BUF_SIZE-strlen(buffer)-1);
+//     strncat(buffer,"Case    |  1   2   3   4   5   6  | Scores\n", BUF_SIZE-strlen(buffer)-1);
+//     strncat(buffer,"---------------------------------------------------\n", BUF_SIZE-strlen(buffer)-1);
+//     strncat(buffer,GREEN "%s P1  | %2d  %2d  %2d  %2d  %2d  %2d  | %d\n" RESET, game->turn == game->players[0] ? RED "-->" GREEN : "   ", game->board[0][0], game->board[0][1], game->board[0][2], game->board[0][3], game->board[0][4], game->board[0][5], game->players[0]->score, BUF_SIZE-strlen(buffer)-1);
+//     strncat(buffer,"---------------------------------------------------\n", BUF_SIZE-strlen(buffer)-1);
+//     strncat(buffer,PURPLE "%s P2  | %2d  %2d  %2d  %2d  %2d  %2d  | %d\n" RESET, game->turn == game->players[1] ? RED "-->" PURPLE : "   ", game->board[1][0], game->board[1][1], game->board[1][2], game->board[1][3], game->board[1][4], game->board[1][5], game->players[1]->score, BUF_SIZE-strlen(buffer)-1);
+//     strncat(buffer,"---------------------------------------------------\n", BUF_SIZE-strlen(buffer)-1);
+//     strncat(buffer,"          12  11  10   9   8   7\n", BUF_SIZE-strlen(buffer)-1);
+//     return buffer;
+// }
+
+
+
 
 int main(int argc, char **argv)
 {

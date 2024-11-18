@@ -18,71 +18,81 @@ void manual_fill_board(Game *game)
     }
 }
 
-// Play the game
-void playGame(Game **gamePtr)
-{
-    Game *game = *gamePtr;
-    while (!is_game_over(game))
-    {
-        print_board(game);
-        int caseNumber;
-        printf("\nPlayer %d, enter the pit (<= 0 or > 12 == tie) in which you want to play : ", game->turn == game->players[0] ? 1 : 2);
-        scanf("%d", &caseNumber);
-        Pit pit;
-        if (!get_pit(caseNumber, &pit))
-        {
-            tie(game);
-            game->turn = get_opponent(game->turn, game);
-            continue;
-        }
-        else if (is_valid_move(pit, game))
-        {
-            make_move(gamePtr, pit);
-            game = *gamePtr;
-        }
-        else
-        {
-            printf("Invalid move\n");
-        }
-    }
-    printf("\n\n\n\n\n Final board !\n");
-    print_board(game);
-    Player *winner = get_winner(game);
-    if (winner != NULL)
-    {
-        printf("Player %d won !\n", winner == game->players[0] ? 1 : 2);
-    }
-    else
-    {
-        printf("Tie !\n");
-    }
-}
+// // Play the game
+// void playGame(Game **gamePtr, Client *client)
+// {
+//     // Le client qui lance le défi est toujours le premier à jouer
+//     Game *game = *gamePtr;
+//     Client* clientQuiJoue = client;
+//     while (!is_game_over(game))
+//     {
+//         print_board(game);
+//         int caseNumber;
+//         int turnToPlay;
+//         if (clientQuiJoue->name == client->name){
+//             turnToPlay = 1;
+//         }
+//         else{
+//             turnToPlay = 2;
+//         }
+//         printf("\nPlayer %d, enter the pit (1-6 for P1, 7-12 for P2) : ", turntoPlay);
+//         scanf("%d", &caseNumber);
 
-int main()
-{
-    Player *player1 = create_player();
-    Player *player2 = create_player();
+//         Pit pit;
+//         if (!get_pit(caseNumber, &pit))
+//         {
+//             tie(game);
+//             game->turn = get_opponent(game->turn, game);
+//             continue;
+//         }
+//         else if (is_valid_move(pit, game))
+//         {
+//             make_move(gamePtr, pit);
+//             game = *gamePtr;
+//         }
+//         else
+//         {
+//             printf("Invalid move\n");
+//         }
+//     }
+//     printf("\n\n\n\n\n Final board !\n");
+//     print_board(game);
+//     Player *winner = get_winner(game);
+//     if (winner != NULL)
+//     {
+//         printf("Player %d won !\n", winner == game->players[0] ? 1 : 2);
+//     }
+//     else
+//     {
+//         printf("Tie !\n");
+//     }
+// }
 
-    Game *game = new_game(player1, player2);
+// int main()
+// {
+//     Player *player1 = create_player();
+//     Player *player2 = create_player();
 
-    int InitChoice;
+//     Game *game = new_game(player1, player2);
 
-    printf("\n\nHow would you like to initialize the game board?\n");
-    printf("1. Normal Initialization\n");
-    printf("2. Manual Initialization\n");
-    printf("Enter your choice (1 or 2): ");
-    scanf("%d", &InitChoice);
+//     int InitChoice;
 
-    if (InitChoice == 2)
-    {
-        manual_fill_board(game);
-    }
+//     printf("\n\nHow would you like to initialize the game board?\n");
+//     printf("1. Normal Initialization\n");
+//     printf("2. Manual Initialization\n");
+//     printf("Enter your choice (1 or 2): ");
+//     scanf("%d", &InitChoice);
 
-    playGame(&game);
+//     if (InitChoice == 2)
+//     {
+//         manual_fill_board(game);
+//     }
 
-    free_game(game);
-    free_player(player1);
-    free_player(player2);
+//     playGame(&game);
 
-    return 0;
-}
+//     free_game(game);
+//     free_player(player1);
+//     free_player(player2);
+
+//     return 0;
+// }
