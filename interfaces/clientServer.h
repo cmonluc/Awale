@@ -16,6 +16,7 @@ typedef struct _Client
    Game *game;
    Player *player;
    struct _Client *challengedBy;
+   char* bio;
 }Client;
 
 #endif /* guard */

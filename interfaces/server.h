@@ -1,5 +1,5 @@
 #include "clientServer.h"
-#include "gameLogic.h"
+#include "gamelogic.h"
 #include <stdlib.h>
 
 #ifndef SERVER_H
@@ -36,6 +36,7 @@ typedef struct in_addr IN_ADDR;
 #define MAX_CLIENTS     100
 
 #define BUF_SIZE    1024
+#define AVAILABLE_BUF_SIZE BUF_SIZE-strlen(buffer)-1
 
 #define MAX_PSEUDO_ATTEMPTS 5
 

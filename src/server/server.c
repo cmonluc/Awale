@@ -192,7 +192,7 @@ static void app(void)
                         challengeClient(clients[i]);
                     }
                     else if (strcmp(buffer,"3")==0){
-                     
+
                     }
                     else if (strcmp(buffer, "accept") == 0)
                      {
