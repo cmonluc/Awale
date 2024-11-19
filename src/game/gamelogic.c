@@ -16,9 +16,9 @@ Game *new_game(Player *player1, Player *player2)
     game->players[1] = player2;
 
     // chooses randomly who starts
-    // srand(time(NULL));
-    // game->turn = rand() % 2 == 0 ? player1 : player2;
-    game->turn = player1;
+    srand(time(NULL));
+    game->turn = rand() % 2 == 0 ? player1 : player2;
+    //game->turn = player1;
 
     for (int i = 0; i < 2; i++)
     {

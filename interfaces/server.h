@@ -49,6 +49,7 @@ static int init_connection(void);
 static void end_connection(int sock);
 static int read_client(SOCKET sock, char *buffer);
 static void write_client(SOCKET sock, const char *buffer);
+static Client *getClientByName(const char *name);
 static void send_message_to_all_clients(Client *clients, Client client, int actual, const char *buffer, char from_server);
 static void remove_client(Client *clients, int to_remove, int *actual);
 static void clear_clients(Client *clients, int actual);
@@ -59,5 +60,13 @@ static int check_socket(int sockFd, char *tempBuffer);
 static int challengeClient(Client *challenger);
 static void handleGame(Client *client);
 void sendBoardToClient(Game* game, Client *client);
+void* handleClient(void * indexInClient);
+static int handleMenu(Client * client);
+static void sendMessageToAllObservers(Game *game, const char *buffer, Client *except);
+static void sendChatToAllObservers(Client *client, const char *buffer, const char *color);
+static int handleObserver(Client *client);
+static int listClientsInGame(char *buffer, Client *client);
+static void updateGameForObservers(Game *oldGame, Game *newGame);
+static void sendBoardToAllObservers(Game *game);
 
 #endif /* guard */
