@@ -186,6 +186,10 @@ static void app(void)
       }
    }
 
+   for (int i = 0; i < MAX_CLIENTS; i++)
+   {
+      pthread_kill(threads[i], 0);
+   }
    clear_clients(clients, actual);
    end_connection(sock);
 }
@@ -209,7 +213,10 @@ static int handleMenu(Client *client){
       send_message_to_all_clients(clients, *client, actual, buffer, 1);
    }
    else{
-      if (strcmp(buffer,"1")==0){
+      if (strcmp(buffer, "0")==0){
+         return -1;
+      }
+      else if (strcmp(buffer,"1")==0){
          list_clients(buffer, *client);
          write_client(client->sock, "To see more information about a player, type their username. Type anything to go back to the menu.\n\n");
          read_client(client->sock, buffer);
@@ -271,6 +278,9 @@ static int handleMenu(Client *client){
             write_client(messaged->sock, " \n\n\n");
          }
       }
+      else if(strcmp(buffer, "6")==0){
+         handleFriends(client);
+      }
       else if (strcmp(buffer, "accept") == 0)
       {
          if (client->challengedBy == NULL)
@@ -298,6 +308,10 @@ static int handleMenu(Client *client){
             write_client(client->challengedBy->sock, buffer);
          }
       }
+      else
+        {
+            write_client(client->sock, RED "\nInvalid input! Please enter a valid option.\n" RESET);
+        }
    }
 
 }
@@ -324,7 +338,8 @@ void *handleClient(void *indexInClients)
    }
 
    printf("Client %s disconnected\n", client->name);
-   remove_client(clients,client->index,&actual);
+   //remove_client(clients,client->index,&actual);
+   clear_client(client); 
    return NULL;
 }
 
@@ -335,6 +350,16 @@ static void clear_clients(Client *clients, int actual)
    {
       closesocket(clients[i].sock);
    }
+}
+
+static void clear_client(Client *client)
+{
+   if (client == NULL) {
+      return;
+   }
+   closesocket(client->sock);
+   free(client);
+   clients[client->index] = NULL;
 }
 
 static void remove_client(Client *clients, int to_remove, int *actual)
@@ -553,6 +578,8 @@ static void menu(Client *client)
     strncat(buffer, "3 - Modify your bio\r\n", BUF_SIZE-strlen(buffer)-1);
     strncat(buffer, "4 - Observe a game\r\n", BUF_SIZE-strlen(buffer)-1);
     strncat(buffer, "5 - Chat with other users\r\n", BUF_SIZE-strlen(buffer)-1);
+    strncat(buffer, "6 - Add, remove or list your friends\r\n", BUF_SIZE-strlen(buffer)-1);
+    strncat(buffer, "0 - quit the server\r\n", BUF_SIZE-strlen(buffer)-1);
     write_client(client->sock, buffer);
 }
 
@@ -1046,6 +1073,89 @@ static void sendMessageToAllObservers(Game *game, const char *buffer, Client *ex
          write_client(clients[i]->sock, buffer);
       }
    }
+}
+
+static void handleFriends(Client *client){
+   char buffer[BUF_SIZE];
+   while(1){
+      write_client(client->sock, "\n\nWhat do you want to do ? \n");
+      write_client(client->sock, "1 - add a friend\n");
+      write_client(client->sock, "2 - remove a friend\n");
+      write_client(client->sock, "3 - list your friends\n");
+      write_client(client->sock, "0 - go back to the menu\n");
+      read_client(client->sock, buffer);
+
+      if(strcmp(buffer, "1")==0){
+         list_clients(buffer, *client);
+         write_client(client->sock, "Type the name of the user to add him to your friends\n");
+         read_client(client->sock, buffer);
+         Client* searched = getClientByName(buffer);
+         if (searched != NULL){
+            for(int i=0; i<MAX_FRIENDS; i++){
+               if(client->friends[i]==NULL){
+                  client->friends[i]=searched;
+                  break;
+               }
+            }
+            write_client(client->sock, "Friend added !");
+            buffer[0]='0';
+            strncat(buffer, client->name, BUF_SIZE-strlen(buffer)-1);
+            strncat(buffer, " added you to his friends !", BUF_SIZE-strlen(buffer)-1);
+            write_client(searched->sock, buffer);
+         }
+         else{
+            write_client(client->sock, "Invalid username\n");
+         }
+
+      }
+      else if(strcmp(buffer, "2")==0){
+         list_friends(client);
+         write_client(client->sock, "Type the name of the friend you want to remove\n");
+         read_client(client->sock, buffer);
+         Client* searched = getClientByName(buffer);
+         int found = 0;
+         if(searched!=NULL){
+            for(int i=0; i<MAX_FRIENDS; i++){
+               if(strcmp(client->friends[i]->name, searched->name)==0){
+                  client->friends[i]=NULL;
+                  found=1;
+                  write_client(client->sock, "User removed from your friends!\n");
+                  break;
+               }
+            }
+            if(!found){
+               write_client(client->sock, "Username not found in your friends\n");
+            }
+         }
+         else{
+            write_client(client->sock, "This user doesn't exist\n");
+         }
+         
+      }
+      else if(strcmp(buffer, "3")==0){
+         list_friends(client);
+      }
+      else if(strcmp(buffer, "0")==0){
+         break;
+      }
+   }
+}
+
+static void list_friends(Client *client){
+   char buffer[BUF_SIZE];
+   buffer[0] = 0;
+    strncat(buffer, "List of your friends : \r\n", BUF_SIZE-strlen(buffer)-1);
+    for (int i=0 ; i<MAX_FRIENDS; i++)
+    {
+        if (client->friends[i] != NULL)
+        {
+            strncat(buffer, "    - ", BUF_SIZE-strlen(buffer)-1);
+            strncat(buffer, client->friends[i]->name, BUF_SIZE-strlen(buffer)-1);
+            strncat(buffer, "\r\n", BUF_SIZE-strlen(buffer)-1);
+        }
+    }
+    write_client(client->sock, buffer);
+
 }
 
 

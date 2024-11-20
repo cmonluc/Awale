@@ -33,7 +33,6 @@ typedef struct in_addr IN_ADDR;
 
 #define CRLF        "\r\n"
 #define PORT         1977
-#define MAX_CLIENTS     100
 
 #define BUF_SIZE    1024
 #define AVAILABLE_BUF_SIZE BUF_SIZE-strlen(buffer)-1
@@ -68,5 +67,8 @@ static int handleObserver(Client *client);
 static int listClientsInGame(char *buffer, Client *client);
 static void updateGameForObservers(Game *oldGame, Game *newGame);
 static void sendBoardToAllObservers(Game *game);
+static void clear_client(Client *client);
+static void handleFriends(Client *client);
+static void list_friends(Client *client);
 
 #endif /* guard */
