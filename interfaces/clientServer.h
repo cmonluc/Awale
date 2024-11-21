@@ -21,7 +21,8 @@ typedef struct _Client
    char bio[BUF_SIZE];
    int index;
    Game *observe;
-   struct _Client *friends[MAX_FRIENDS]
+   struct _Client *friends[MAX_FRIENDS];
+   int isPrivate;
 }Client;
 
 #endif /* guard */

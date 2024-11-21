@@ -70,5 +70,7 @@ static void sendBoardToAllObservers(Game *game);
 static void clear_client(Client *client);
 static void handleFriends(Client *client);
 static void list_friends(Client *client);
+static int canObserve(Client *client, Client *observed);
+static void remove_friend(Client *client);
 
 #endif /* guard */
