@@ -57,7 +57,7 @@ static void menu(Client *client);
 static int add_client(Client *client);
 static int check_socket(int sockFd, char *tempBuffer);
 static int challengeClient(Client *challenger);
-static void handleGame(Client *client);
+static int handleGame(Client *client);
 void sendBoardToClient(Game* game, Client *client);
 void* handleClient(void * indexInClient);
 static int handleMenu(Client * client);

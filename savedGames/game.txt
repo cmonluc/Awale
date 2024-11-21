@@ -1,0 +1,6 @@
+Game between constousse and ele
+
+constousse has selected the pit : 8
+ele has selected the pit : 6
+constousse has selected the pit : 10
+It's a tie !

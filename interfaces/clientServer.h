@@ -23,6 +23,7 @@ typedef struct _Client
    Game *observe;
    struct _Client *friends[MAX_FRIENDS];
    int isPrivate;
+   char* saved[2048];
 }Client;
 
 #endif /* guard */
