@@ -121,12 +121,15 @@ static void app(void)
       {
          FD_SET(clients[i]->sock, &rdfs);
       }
-
+      fflush(stdout);
+      printf("line 125\n");
       if(select(max + 1, &rdfs, NULL, NULL, NULL) == -1)
       {
+         fflush(stdout);
          perror("select()");
          exit(errno);
       }
+      printf("133\n");
 
       /* something from standard input : i.e keyboard */
       if(FD_ISSET(STDIN_FILENO, &rdfs))
@@ -209,13 +212,14 @@ static int handleMenu(Client *client){
    }
    
    int c = read_client(client->sock,buffer);
-   if (c<0){
+   printf("read_client = %d\n", c);
+   if (c<=0){
       return -1;
    }
    else if(c == 0)
    {
       closesocket(client->sock);
-      remove_client(clients, client->index, &actual);
+      //remove_client(clients, client->index, &actual);
       strncpy(buffer, client->name, BUF_SIZE - 1);
       strncat(buffer, " disconnected !", BUF_SIZE - strlen(buffer) - 1);
       send_message_to_all_clients(clients, *client, actual, buffer, 1);
@@ -227,7 +231,10 @@ static int handleMenu(Client *client){
       else if (strcmp(buffer,"1")==0){
          list_clients(buffer, *client);
          write_client(client->sock, "To see more information about a player, type their username. Type anything to go back to the menu.\n\n");
-         read_client(client->sock, buffer);
+         int k = read_client(client->sock, buffer);
+         if (k <=0){
+            return -1;
+         }
          Client* searched = getClientByName(buffer);
          if (searched != NULL){
             write_client(client->sock, PURPLE"\nUsername : "RESET);
@@ -249,10 +256,16 @@ static int handleMenu(Client *client){
             write_client(client->sock, client->bio);
          }
          write_client(client->sock, RESET "\n\nDo you want to modify your biography ?\nType yes to modify, no to go back to the menu.\n");
-         read_client(client->sock, buffer);
+         int p = read_client(client->sock, buffer);
+         if (p<=0){
+            return -1;
+         }
          if(strcmp(buffer, "yes")==0){
             write_client(client->sock, "\nPlease write below your new biography. (1000 characters max)\n");
-            read_client(client->sock, buffer);
+            p =  read_client(client->sock, buffer);
+            if (p<=0){
+               return -1;
+            }
             strncpy(client->bio, buffer, BUF_SIZE-1);
          }
       }
@@ -263,7 +276,10 @@ static int handleMenu(Client *client){
          list_clients(buffer,*client);
          write_client(client->sock, "\n\n");
          write_client(client->sock, "To send a message to a client, type their username !\n");
-         read_client(client->sock, buffer);
+         int o = read_client(client->sock, buffer);
+         if (o<=0){
+            return -1;
+         }
          Client* messaged = getClientByName(buffer);
          if (messaged == NULL){
             write_client(client->sock, "\nNot a client. Going back to the menu\n");
@@ -272,8 +288,11 @@ static int handleMenu(Client *client){
             write_client(client->sock, "\nType in a message to send to "BLUE);
             write_client(client->sock, messaged->name);
             write_client(client->sock, RESET"\n");
-            read_client(client->sock,buffer);
-             write_client(client->sock, "\n");
+            int t = read_client(client->sock,buffer);
+            if (t<=0){
+               return -1;
+            }
+            write_client(client->sock, "\n");
             write_client(client->sock, GREEN"Message sent : ");
             write_client(client->sock, buffer);
             write_client(client->sock, RESET" \n\n\n");
@@ -316,6 +335,26 @@ static int handleMenu(Client *client){
             write_client(client->challengedBy->sock, buffer);
          }
       }
+      else if (strcmp(buffer, "refuse") == 0)
+      {
+         if (client->challengedBy != NULL && client->challengedBy->challengedBy != NULL)
+         {
+            char message[BUF_SIZE];
+            snprintf(message, BUF_SIZE, "\n%s refused your challenge !\n", client->name);
+            write_client(client->challengedBy->sock, message);
+
+            message[0] = 0;
+            snprintf(message, BUF_SIZE, "\nYou refused %s's challenge !\n", client->challengedBy->name);
+            write_client(client->sock, message);
+
+            client->challengedBy->challengedBy = NULL;
+            client->challengedBy = NULL;
+         }
+         else
+         {
+            write_client(client->sock, "\nYou don't have any challenge to refuse !\n");
+         }
+      }
       else
         {
             write_client(client->sock, RED "\nInvalid input! Please enter a valid option.\n" RESET);
@@ -338,20 +377,21 @@ void *handleClient(void *indexInClients)
    while (1)
    {
       int disc = handleGame(client);
-      printf("%d\n\n",disc);
+      printf(client->name);
+      printf(" disconnexion = %d\n\n",disc);
       fflush(stdout);
-      if (disc){
-         printf(client->name);
-         printf("here\n");
-         fflush(stdout);
-         remove_client(client->challengedBy,client->challengedBy->index,actual);
-         printf("here2\n");
-         fflush(stdout);
-         remove_friend(client->challengedBy);
-         printf("here3\n");
-         fflush(stdout);
-         clear_client(client->challengedBy);
+      if (disc==1){
+         // remove_client(client,client->index,&actual);
+         // remove_friend(client);
+         // clear_client(client);
+         break;
 
+      }
+      else if (disc == -1){
+         printf("deco client");
+         remove_friend(client);
+         //remove_client(client,client->index,&actual);
+         clear_client(client,&actual);
       }
       //handleGame(client);
       if (FD_ISSET(client->sock, &rdfs))
@@ -364,7 +404,6 @@ void *handleClient(void *indexInClients)
          }
       }
    }
-
    strncat(buffer, "Client ", BUF_SIZE-strlen(buffer)-1);
    strncat(buffer, client->name, BUF_SIZE-strlen(buffer)-1);
    strncat(buffer, " disconnected !\n", BUF_SIZE-strlen(buffer)-1);
@@ -373,7 +412,7 @@ void *handleClient(void *indexInClients)
    //send_message_to_all_clients(clients, *client, actual, buffer, 1);
    remove_friend(client);
    remove_client(clients,index,&actual);
-   clear_client(client); 
+   clear_client(client,&actual);
    return NULL;
 }
 
@@ -402,34 +441,65 @@ static void clear_clients(Client *clients, int actual)
    }
 }
 
-static void clear_client(Client *client)
+static void clear_client(Client *client,int * actual)
 {
+   
    if (client == NULL) {
       return;
    }
+   // clients[client->index] = NULL;
+   // *actual--;
    if (client->game != NULL){
-      printf("client a un game en cours\n\n");
       fflush(stdout);
-      free_player(client->game->players[0]);
-      free_player(client->game->players[0]);
+      free_player(client->game->players[1]);
       free_game(client->game);
       client->challengedBy->game=NULL;
       write_client(client->challengedBy->sock, "\n\nYour opponent has disconnected.\n\n");
       client->challengedBy->challengedBy =NULL;
-      printf("client supp askip\n\n");
-      fflush(stdout);
+      
+   }
+   // Client was challenged
+   if (client->challengedBy != NULL)
+   {
+      client->challengedBy->challengedBy = NULL;
+      if (client->challengedBy->game == NULL)
+      {
+         char message[BUF_SIZE];
+         snprintf(message, BUF_SIZE, "\n%s disconnected !\n", client->name);
+         write_client(client->challengedBy->sock, message);
+      }
    }
    closesocket(client->sock);
    free(client);
-   //clients[client->index] = NULL;
+   
 }
 
-static void remove_client(Client *clients, int to_remove, int *actual)
+static void remove_client(Client* clients[MAX_CLIENTS], int to_remove, int *actual)
 {
    /* we remove the client in the array */
-   memmove(clients + to_remove, clients + to_remove + 1, (*actual - to_remove - 1) * sizeof(Client));
+   printf("479\n\n");
+   printf("to remove : %d\n",to_remove);
+   printf("actual : %d\n",*actual);
+   memmove(*clients + to_remove, *clients + to_remove + 1, (*actual - to_remove - 1) * sizeof(Client));
+   printf("481\n\n");
    /* number client - 1 */
+   fflush(stdout);
    (*actual)--;
+   printf("483\n\n");
+   printf("to remove : %d\n",to_remove);
+   printf("actual : %d\n",*actual);
+   for(int i=to_remove ; i<*actual ; i++){
+      if(clients[i]!=NULL){
+         printf(clients[i]->name);
+         fflush(stdout);
+         clients[i]->index --;
+      }
+      
+      //clients[i].index--;
+   }
+
+   printf("490\n\n");
+   
 }
 
 static void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server)
@@ -551,6 +621,11 @@ static int add_client(Client *newClient) {
             // Vérifier l'unicité du nom d'utilisateur
             is_unique = 1;
             for (int i = 0; i < MAX_CLIENTS; i++) {
+               printf("buffer = ");
+               printf(buffer);
+               printf("\nclient = ");
+               printf(clients[i]->name);
+               fflush(stdout);
                 if (clients[i] != NULL && strcmp(clients[i]->name, buffer) == 0) {
                     write_client(newClient->sock, "Username already taken. Please choose another.\r\n");
                     is_unique = 0;
@@ -581,10 +656,16 @@ static int add_client(Client *newClient) {
             // Vérifier l'unicité du nom
             is_unique = 1;
             for (int i = 0; i < MAX_CLIENTS; i++) {
+               printf("client = ");
+               
+               printf(newClient->name);
+               fflush(stdout);
                 if (clients[i] != NULL && strcmp(clients[i]->name, newClient->name) == 0) {
-                    write_client(newClient->sock, "Username already taken. Please choose another.\r\n");
-                    is_unique = 0;
-                    break;
+                  printf(clients[i]->name);
+                  fflush(stdout);
+                  write_client(newClient->sock, "Username already taken. Please choose another.\r\n");
+                  is_unique = 0;
+                  break;
                 }
             }
 
@@ -641,7 +722,7 @@ static void menu(Client *client)
     strncat(buffer, "\t4 - Observe a game\r\n", BUF_SIZE-strlen(buffer)-1);
     strncat(buffer, "\t5 - Chat with other users\r\n", BUF_SIZE-strlen(buffer)-1);
     strncat(buffer, "\t6 - Add, remove or list your friends\r\n", BUF_SIZE-strlen(buffer)-1);
-    strncat(buffer, "\t0 - quit the server\r\n", BUF_SIZE-strlen(buffer)-1);
+    strncat(buffer, "\tCtrl-C or 0 - quit the server\r\n", BUF_SIZE-strlen(buffer)-1);
     write_client(client->sock, buffer);
 }
 
@@ -801,7 +882,7 @@ static int challengeClient(Client *challenger)
          strncat(message, "game !\n", BUF_SIZE-strlen(message)-1);
 
          write_client(challengee->sock, message);
-         snprintf(message, BUF_SIZE, "Type accept to accept the challenge !");
+         snprintf(message, BUF_SIZE, "Type 'accept' to accept the challenge, or 'refuse' to refuse it !");
          write_client(challengee->sock, message);
 
          snprintf(message, BUF_SIZE, "Waiting for %s's response...\n", challengee->name);
@@ -868,46 +949,69 @@ static int handleGame(Client *client)
 {
    
    int disconnexion = 0;
+   // printf(client->name);
+   // printf(" is at 910\n\n");
    while (client->game != NULL)
    {
+      // printf(client->name);
+      // printf(" game's\n\n");
       Game *game = client->game;
       char buffer[BUF_SIZE];
-      while (game != NULL && game->turn != NULL && game->turn == client->challengedBy->player)
+      while (client->game != NULL && client->game->turn != NULL && client->game->turn == client->challengedBy->player)
       {
+         // printf(client->name);
+         // printf(" is at 928\n\n");
          char tempBuffer[BUF_SIZE];
+         // printf(client->name);
+         // printf(" is at 931\n\n");
          tempBuffer[0] = 0;
+         // printf(client->name);
+         // printf(" is at 932\n\n");
          char message[BUF_SIZE];
          message[0] = 0;
 
          // Checks for disconnect and absorbs all inputs while waiting for the other player
+         // printf(client->name);
+         // printf(" is at 940\n\n");
          int checkSocket = check_socket(client->sock, tempBuffer);
-         printf("checkSocket : ");
-         printf("%d\n\n",checkSocket);
-         if (!checkSocket)
+         // printf(client->name);
+         // printf(" is here with checksocket = ");
+         //printf("%d\n\n",checkSocket);
+         if (checkSocket==0)
          {
+            fflush(stdout);
             disconnexion = 1;
             break;
          }
-         else if (strlen(tempBuffer) > 0)
+         else if (tempBuffer!= NULL && strlen(tempBuffer) > 0)
          {
+            fflush(stdout);
             sendChatToAllObservers(client, tempBuffer, client->player == game->players[0] ? GREEN : PURPLE);
          }
+         for (int i = 0;i<MAX_CLIENTS; i++){
+            if (clients[i]!= NULL && clients[i]==client->challengedBy){
+               client->game = clients[i]->game;
+               if (client->game->turn ==NULL){
+               }
+            }
+         }
       }
+
       // Pointer to game may have changed in the other thread
       // Checks if the game is still going
       // Checks for disconnect
-      if ((game = client->game) == NULL || game->turn == NULL || disconnexion)
+      // printf(client->name);
+      // printf(" is at 945\n\n");
+      if (client->game == NULL || game->turn == NULL || disconnexion)
       {
-         return 1;
-         //break;
+         disconnexion = 2;
+         break;
       }
 
       // write_client(client->sock, "\n" RED "It's your turn !\n" RESET "Type " PURPLE "tie" RESET " to tie\n" BLUE "Type anything else to send it to your opponent and the observers\n" RESET);
       char *nameP1 = client->player == game->players[0] ? client->name : client->challengedBy->name;
       char *nameP2 = client->player == game->players[1] ? client->name : client->challengedBy->name;
-      //construct_board(game, buffer, nameP1, nameP2);
-      //sendBoardToClient(game,client);
-      sendBoardToAllObservers(game);
+      sendBoardToAllObservers(client->game);
       write_client(client->sock, "\n" RED "It's your turn !" RESET );
       if (client->player == client->game->players[0]){
          write_client(client->sock, " Type a number between 1 and 6\n" );
@@ -919,12 +1023,17 @@ static int handleGame(Client *client)
       
 
       // Check if the game and the socket are still alive
+      // printf(client->name);
+      // printf(" is at 970\n\n");
       if (client->game == NULL || read_client(client->sock, buffer) <= 0)
       {
+         disconnexion=1;
          break;
       }
       else
       {
+         // printf(client->name);
+         // printf(" is at 979\n\n");
          game = client->game;
          int caseNumber = atoi(buffer);
          Pit pit;
@@ -944,9 +1053,31 @@ static int handleGame(Client *client)
          }
          else if (get_pit(caseNumber, &pit) && is_valid_move(pit, game))
          {
-            make_move(&(client->game), pit);
-
+            make_move(&(game), pit);
+            client->game = game;
+            client->challengedBy->game = game;
+            printf("i send to client\n\n");
+            sendBoardToClient(game, client);
+            printf("i send to client->chall\n\n");
+            sendBoardToClient(game,client->challengedBy);
+            printf("i update\n\n");
+            clients[client->index]->game = client->game;
             updateGameForObservers(game, client->game);
+            if (game->turn==client->player){
+               printf("c'est à ");
+               printf(client->name);
+               printf(" de jouer\n\n");
+            }
+            else if (game->turn==client->challengedBy->player){
+               printf("c'est à ");
+               printf(client->challengedBy->name);
+               printf(" de jouer\n\n");
+            }
+            else{
+               if (game->turn==client->player){
+               printf("c'est à personne\n\n");
+            }
+            }
             game = client->game;
 
             write_client(client->sock, "\nMove done !\nWait for your turn...\nAny message " BLUE "typed will be sent to your opponent" RESET " and the observers.\n");
@@ -959,6 +1090,8 @@ static int handleGame(Client *client)
             sendMessageToAllObservers(game,message, client);
             strncat(client->saved, message,2048-strlen(client->saved)-1);
             strncat(client->challengedBy->saved, message,2048-strlen(client->challengedBy->saved)-1);
+            // printf(client->name);
+            // printf(" is at 1015\n\n");
          }
          else
          {
@@ -966,6 +1099,8 @@ static int handleGame(Client *client)
          }
 
          // Game is over
+         // printf(client->name);
+         // printf(" is at 1024\n\n");
          if (game != NULL && is_game_over(game))
          {
             //construct_board(game, buffer, nameP1, nameP2);
@@ -1007,7 +1142,10 @@ static int handleGame(Client *client)
             updateGameForObservers(game, NULL);
 
             write_client(client->sock, "\nDo you want to save your game ?\nType 'yes' or 'no'\n");
-            read_client(client->sock, buffer);
+            int c = read_client(client->sock, buffer);
+            if (c<=0){
+               return -1;
+            }
             if(strcmp(buffer, "yes")==0){
                FILE *file = fopen("./savedGames/game.txt", "w+");
 
@@ -1020,7 +1158,10 @@ static int handleGame(Client *client)
             else{}
 
             write_client(client->challengedBy->sock, "\nDo you want to save your game ?\nType 'yes' or 'no'\n");
-            read_client(client->challengedBy->sock, buffer);
+            c = read_client(client->challengedBy->sock, buffer);
+            if (c<=0){
+               return 1;
+            }
             if(strcmp(buffer, "yes")==0){
                FILE *file = fopen("./savedGames/game.txt", "w+");
                if(file!=NULL){
@@ -1047,6 +1188,8 @@ static int handleGame(Client *client)
          }
          
       }
+      // printf(client->name);
+      // printf(" is at 1113\n\n");
    }
    return disconnexion;
 }
@@ -1205,12 +1348,18 @@ static void handleFriends(Client *client){
       write_client(client->sock, "\t2 - remove a friend\n");
       write_client(client->sock, "\t3 - list your friends\n");
       write_client(client->sock, "\t0 - go back to the menu\n");
-      read_client(client->sock, buffer);
+      int k = read_client(client->sock, buffer);
+      if (k<=0){
+         return -1;
+      }
 
       if(strcmp(buffer, "1")==0){
          list_clients(buffer, *client);
          write_client(client->sock, "Type the name of the user to add him to your friends\n");
-         read_client(client->sock, buffer);
+         int i = read_client(client->sock, buffer);
+         if (i<=0){
+            return -1;
+         }
          Client* searched = getClientByName(buffer);
          if (searched != NULL){
             for(int i=0; i<MAX_FRIENDS; i++){
@@ -1233,7 +1382,10 @@ static void handleFriends(Client *client){
       else if(strcmp(buffer, "2")==0){
          list_friends(client);
          write_client(client->sock, "Type the name of the friend you want to remove\n");
-         read_client(client->sock, buffer);
+         int u= read_client(client->sock, buffer);
+         if (u<=0){
+            return -1;
+         }
          Client* searched = getClientByName(buffer);
          int found = 0;
          if(searched!=NULL){

@@ -1,4 +1,5 @@
 #include "gameLogic.h"
+#include <stdio.h>
 
 Player *create_player()
 {
@@ -175,8 +176,75 @@ void make_move(Game **gamePtr, Pit pit)
     }
     capture(gamePtr, (Pit){line, column});
     game = *gamePtr;
+    if (game == NULL){
+        printf("the game is now null\n\n");
+    }
     game->turn = get_opponent(game->turn, game);
 }
+
+// void capture(Game **gamePtr, Pit startingPit)
+// {
+//     Game *game = *gamePtr;
+//     boolean capture = FALSE;
+//     int currentLine = startingPit.line;
+//     int currentColumn = startingPit.column;
+//     int seedsCollected = 0;
+
+//     // Check if the starting pit is empty, or has 1 or more than 3 seeds, or the current player isn't in the opponent's line
+//     if ((game->board[currentLine][currentColumn] != 2 && game->board[currentLine][currentColumn] != 3) || (game->turn == game->players[0] && currentLine == 0) || (game->turn == game->players[1] && currentLine == 1))
+//         return;
+
+//     // Create a copy of the game where the seeds will be removed
+//     Game *gameCopy = copy_game(game);
+
+//     // Collect seeds and look at previous squares until conditions met
+//     while (game->board[currentLine][currentColumn] == 2 || game->board[currentLine][currentColumn] == 3)
+//     {
+         
+//         printf(" capture line 200\n\n");
+//         seedsCollected += game->board[currentLine][currentColumn];
+//         gameCopy->board[currentLine][currentColumn] = 0;
+
+//         // Move to the previous column in the opposing camp
+//         if (currentLine == 0 && currentColumn > 0)
+//         {
+//             currentColumn--; // Move left on player 0's camp
+//         }
+//         else if (currentLine == 1 && currentColumn < 6)
+//         {
+//             currentColumn++; // Move right on player 1's camp
+//         }
+//         else
+//         {
+//             break;
+//         }
+//     }
+
+//     // Check if the opponent has seeds left in their camp
+//     boolean opponentHasSeeds = FALSE;
+//     for (int j = 0; j < 6; j++)
+//     {
+//         if (gameCopy->board[currentLine][j] > 0)
+//         {
+//             opponentHasSeeds = TRUE;
+//             break;
+//         }
+//     }
+
+//     // If the opponent has seeds, the capture is valid
+//     if (opponentHasSeeds)
+//     {
+//         free_game(game);
+//         *gamePtr = gameCopy;
+//         game = *gamePtr;
+//         game->turn->score += seedsCollected;
+//         printf("has captured");
+//     }
+//     else
+//     {
+//         free_game(gameCopy);
+//     }
+// }
 
 void capture(Game **gamePtr, Pit startingPit)
 {
@@ -196,6 +264,8 @@ void capture(Game **gamePtr, Pit startingPit)
     // Collect seeds and look at previous squares until conditions met
     while (game->board[currentLine][currentColumn] == 2 || game->board[currentLine][currentColumn] == 3)
     {
+         
+        printf(" capture line 200\n\n");
         seedsCollected += game->board[currentLine][currentColumn];
         gameCopy->board[currentLine][currentColumn] = 0;
 
@@ -232,12 +302,14 @@ void capture(Game **gamePtr, Pit startingPit)
         *gamePtr = gameCopy;
         game = *gamePtr;
         game->turn->score += seedsCollected;
+        printf("has captured");
     }
     else
     {
         free_game(gameCopy);
     }
 }
+
 
 Player *player_line_empty(Game *game)
 {

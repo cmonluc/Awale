@@ -20,7 +20,6 @@ typedef struct Game
     Player *players[2];
     Player *turn;
     int board[2][6];
-    int isPrivate;
 } Game;
 
 typedef struct
