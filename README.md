@@ -99,8 +99,8 @@ The project is organized as follows:
 awale <br>
 │<br>
 ├── bin <br>
-|     ├── client<br>
-|     ├── server    <br>   
+|     ├── client<br> <pre>
+|     ├── server    <br>   <pre>
 ├── build <br>
 |     ├── display.o<br>
 |     ├── game.o<br>
