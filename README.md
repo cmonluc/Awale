@@ -99,29 +99,29 @@ The project is organized as follows:
 awale <br>
 │<br>
 ├── bin <br>
-|    ├── client<br>
-|    ├── server    <br>   
+|     ├── client<br>
+|     ├── server    <br>   
 ├── build <br>
-|    ├── display.o<br>
-|    ├── game.o<br>
-|    ├── gamelogic.o    <br>   
+|     ├── display.o<br>
+|     ├── game.o<br>
+|     ├── gamelogic.o    <br>   
 ├── interfaces<br>
-|    ├── client.h<br>
-|    ├── display.h<br>
-|    ├── gamelogic.h<br>
-|    ├── clientServer.h<br>
-|    ├── server.h <br>
+|     ├── client.h<br>
+|     ├── display.h<br>
+|     ├── gamelogic.h<br>
+|     ├── clientServer.h<br>
+|     ├── server.h <br>
 ├── savedGames<br>
-|    ├── game.txt<br>
+|     ├── game.txt<br>
 ├── src <br>
-|    ├── client<br>
-|    |    ├── client.c<br>
-|    ├── game<br>
-|    |    ├── game.c<br>
-|    |    ├── display.c<br>
-|    |    ├── gamelogic.c<br>
-|    ├── server<br>
-|    |    ├── server.c   <br>     
+|     ├── client<br>
+|     |     ├── client.c<br>
+|     ├── game<br>
+|     |     ├── game.c<br>
+|     |     ├── display.c<br>
+|     |     ├── gamelogic.c<br>
+|     ├── server<br>
+|     |     ├── server.c   <br>     
 ├── Makefile <br>       
 └── README.md   <br>     
 
