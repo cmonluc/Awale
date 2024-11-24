@@ -23,7 +23,7 @@ Before you begin, ensure you have the following:
 
 ### 1. Clone the Repository
 To clone the project, use the following command:
-git clone https://github.com/your-username/awale-server.git
+git clone https://github.com/cmonluc/awale.git
 
 
 ### 2. Compile the Project
