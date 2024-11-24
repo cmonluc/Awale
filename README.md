@@ -38,8 +38,8 @@ The server will listen for connections on the default port 1977. This port can b
 
 ### 4. Client
 Once the compilation is finished, run the client with the following command:
-./bin/client
-
+./bin/client <address> [pseudo]
+You can use the address 127.0.0.1 if you launch all the clients in the same laptop. You can write a pseudo (3 characters alphanumeric minimum) or if you forget to write one, the server will ask you to choose a pseudo. You have 5 attempts, otherwise you will be disconnected from the server.
 Clients can connect via terminal and the following menu displays :
 
 1. View all online players
