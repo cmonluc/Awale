@@ -96,7 +96,7 @@ At the end of a game, players can save their game in a text file containing a su
 ### Project Structure
 The project is organized as follows:
 
-/awale <br>
+/awale <br> <pre>
 │<br>
 ├── bin <br>
 |     ├── client<br>
