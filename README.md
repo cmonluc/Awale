@@ -96,33 +96,33 @@ At the end of a game, players can save their game in a text file containing a su
 ### Project Structure
 The project is organized as follows:
 
-awale
-│
-├── bin 
-|    ├── client
-|    ├── server       
-├── build 
-|    ├── display.o
-|    ├── game.o
-|    ├── gamelogic.o       
-├── interfaces
-|    ├── client.h
-|    ├── display.h
-|    ├── gamelogic.h
-|    ├── clientServer.h
-|    ├── server.h 
-├── savedGames
-|    ├── game.txt
-├── src 
-|    ├── client
-|    |    ├── client.c
-|    ├── game
-|    |    ├── game.c
-|    |    ├── display.c
-|    |    ├── gamelogic.c
-|    ├── server
-|    |    ├── server.c        
-├── Makefile         
-└── README.md        
+awale <br>
+│<br>
+├── bin <br>
+|    ├── client<br>
+|    ├── server    <br>   
+├── build <br>
+|    ├── display.o<br>
+|    ├── game.o<br>
+|    ├── gamelogic.o    <br>   
+├── interfaces<br>
+|    ├── client.h<br>
+|    ├── display.h<br>
+|    ├── gamelogic.h<br>
+|    ├── clientServer.h<br>
+|    ├── server.h <br>
+├── savedGames<br>
+|    ├── game.txt<br>
+├── src <br>
+|    ├── client<br>
+|    |    ├── client.c<br>
+|    ├── game<br>
+|    |    ├── game.c<br>
+|    |    ├── display.c<br>
+|    |    ├── gamelogic.c<br>
+|    ├── server<br>
+|    |    ├── server.c   <br>     
+├── Makefile <br>       
+└── README.md   <br>     
 
 
